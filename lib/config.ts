@@ -19,13 +19,16 @@ export const DEFAULT_PORTFOLIO = {
   defaultInflation: 0.06,
 }
 
+const defaultMilestoneDate: string =
+  new Date(new Date().getFullYear() + 18, 5, 1)
+    .toISOString()
+    .split('T')[0] || ''
+
 export const DEFAULT_MILESTONES = [
   {
     id: '1',
     name: "Child's College",
-    targetDate: new Date(new Date().getFullYear() + 18, 5, 1)
-      .toISOString()
-      .split('T')[0],
+    targetDate: defaultMilestoneDate,
     currentCost: 2500000,
     category: 'Education' as const,
   },

@@ -5,7 +5,7 @@ import { useStore } from '@/lib/store'
 import { Milestone, Category } from '@/lib/types'
 import { CATEGORY_DEFAULTS } from '@/lib/config'
 import { formatINR, parseINRInput } from '@/lib/currency'
-import { v4 as uuidv4 } from 'uuid'
+import { generateId } from '@/lib/uuid'
 
 const CATEGORIES: Category[] = [
   'Education',
@@ -30,15 +30,30 @@ export function MilestoneDrawer({
 }: MilestoneDrawerProps) {
   const { addMilestone, updateMilestone, deleteMilestone } = useStore()
 
-  const [formData, setFormData] = useState<Milestone>(
-    editingMilestone || {
-      id: uuidv4(),
-      name: '',
-      targetDate: new Date().toISOString().split('T')[0],
-      currentCost: 0,
-      category: 'General',
+  const defaultDate: string = new Date().toISOString().split('T')[0] || ''
+
+  const getInitialMilestone = (): Milestone => {
+    if (editingMilestone) {
+      return {
+        id: editingMilestone.id,
+        name: editingMilestone.name,
+        targetDate: editingMilestone.targetDate === undefined ? defaultDate : editingMilestone.targetDate,
+        currentCost: editingMilestone.currentCost,
+        category: editingMilestone.category,
+        inflationOverride: editingMilestone.inflationOverride,
+      } as const
     }
-  )
+
+    return {
+      id: generateId(),
+      name: '',
+      targetDate: defaultDate,
+      currentCost: 0,
+      category: 'General' as const,
+    }
+  }
+
+  const [formData, setFormData] = useState<Milestone>(getInitialMilestone())
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -48,9 +63,9 @@ export function MilestoneDrawer({
       addMilestone(formData)
     }
     setFormData({
-      id: uuidv4(),
+      id: generateId(),
       name: '',
-      targetDate: new Date().toISOString().split('T')[0],
+      targetDate: defaultDate,
       currentCost: 0,
       category: 'General',
     })

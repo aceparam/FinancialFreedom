@@ -89,7 +89,7 @@ export function projectPortfolio(
     let pointMilestone: ProjectionPoint['milestone'] | undefined
 
     if (milestonesThisMonth.length > 0) {
-      const m = milestonesThisMonth[0]
+      const m = milestonesThisMonth[0]!
       const inflationRate = getInflationRate(m)
       const required = m.currentCost * Math.pow(1 + inflationRate, years)
 
@@ -108,10 +108,11 @@ export function projectPortfolio(
     if (month % CHART_RESOLUTION === 0) {
       const date = new Date()
       date.setMonth(date.getMonth() + month)
+      const dateStr = date.toISOString().split('T')[0] || ''
 
       results.push({
         monthIndex: month,
-        date: date.toISOString().split('T')[0],
+        date: dateStr,
         portfolioValue: corpusAtMonth,
         milestone: pointMilestone,
       })
