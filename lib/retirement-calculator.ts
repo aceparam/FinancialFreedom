@@ -42,26 +42,51 @@ export function calculateMonthlyNetIncome(
   return totalMonthlyIncome - monthlyExpense
 }
 
-export function calculateRetirementCorpus(
-  monthlyExpense: number,
-  inflation: number,
+// Present Value at retirement of a stream of monthly payments that grow
+// with inflation, assuming the remaining corpus continues to earn returns.
+// Uses the Present Value of a Growing Annuity formula:
+//   PV = PMT × (1 - ((1+g)/(1+r))^n) / (r - g)
+export function presentValueOfRetirementStream(
+  firstMonthlyPaymentAtRetirement: number,
+  annualInflation: number,
+  annualReturn: number,
   yearsInRetirement: number
 ): number {
-  // Calculate total retirement corpus needed using
-  // Present Value of Annuity formula adjusted for inflation
-  const monthlyInflationRate = inflation / 12
   const months = yearsInRetirement * 12
+  if (months <= 0 || firstMonthlyPaymentAtRetirement <= 0) return 0
 
-  let totalCorpusNeeded = 0
+  const g = annualInflation / 12
+  const r = annualReturn / 12
 
-  // Calculate month-by-month as expenses inflate
-  for (let month = 1; month <= months; month++) {
-    const inflatedMonthlyExpense =
-      monthlyExpense * Math.pow(1 + monthlyInflationRate, month)
-    totalCorpusNeeded += inflatedMonthlyExpense
+  if (Math.abs(r - g) < 1e-9) {
+    return firstMonthlyPaymentAtRetirement * months
   }
 
-  return totalCorpusNeeded
+  const ratio = (1 + g) / (1 + r)
+  return (
+    (firstMonthlyPaymentAtRetirement * (1 - Math.pow(ratio, months))) /
+    (r - g)
+  )
+}
+
+export function calculateRetirementCorpus(
+  monthlyExpenseToday: number,
+  inflation: number,
+  postRetirementReturn: number,
+  yearsUntilRetirement: number,
+  yearsInRetirement: number
+): number {
+  // Inflate today's monthly expense to the value it will be at retirement age
+  const monthlyExpenseAtRetirement =
+    monthlyExpenseToday * Math.pow(1 + inflation, yearsUntilRetirement)
+
+  // Compute corpus needed at retirement, assuming it continues to earn returns
+  return presentValueOfRetirementStream(
+    monthlyExpenseAtRetirement,
+    inflation,
+    postRetirementReturn,
+    yearsInRetirement
+  )
 }
 
 export function calculateProjectedCorpusAtRetirement(
@@ -123,16 +148,27 @@ export function analyzeRetirementReadiness(
   const totalRetirementCorpusNeeded = calculateRetirementCorpus(
     monthlyRetirementExpense,
     inflation,
+    investmentReturns,
+    yearsUntilRetirement,
     yearsInRetirement
   )
 
-  // Account for expected retirement income
-  const monthlyRetirementIncome =
-    income.expectedRetirementIncome / 12
+  // Account for expected retirement income (pension/annuity treated as annual)
+  // PV-adjust it the same way: inflate to retirement age, then compute the
+  // lump sum at retirement it offsets given the corpus keeps earning returns.
+  const monthlyRetirementIncomeToday = income.expectedRetirementIncome / 12
+  const monthlyRetirementIncomeAtRetirement =
+    monthlyRetirementIncomeToday *
+    Math.pow(1 + inflation, yearsUntilRetirement)
+  const corpusOffsetFromIncome = presentValueOfRetirementStream(
+    monthlyRetirementIncomeAtRetirement,
+    inflation,
+    investmentReturns,
+    yearsInRetirement
+  )
   const totalRetirementCorpusNeededAfterIncome = Math.max(
     0,
-    totalRetirementCorpusNeeded -
-      monthlyRetirementIncome * 12 * yearsInRetirement
+    totalRetirementCorpusNeeded - corpusOffsetFromIncome
   )
 
   // Calculate projected corpus at retirement
